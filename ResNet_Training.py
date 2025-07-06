@@ -84,12 +84,19 @@ if __name__=='__main__':
     learning_rate = 0.0001
     batch_size = 10
 
+    # Create Subsets for training and testing
+    train_indices = list(range(0, n_samples))
+    test_indices = list(range(10,n_samples-1,10))
+    train_indices = list(set(train_indices) - set(test_indices))
+    train_subset = Subset(dataset, train_indices)
+    test_subset = Subset(dataset, test_indices)
+    
     # Create dataloader instance
     shuffle = False  # Shuffle the data
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-    print('Here: ', len(dataloader))
-
-
+    dataloader = DataLoader(dataset, batch_size=batch_size_all, shuffle=shuffle)
+    train_loader = DataLoader(train_subset, batch_size=batch_size_train, shuffle=True)
+    test_loader = DataLoader(test_subset, batch_size=batch_size_test, shuffle=False)
+    
     # Wrap the model with nn.DataParallel
     model = modify_resnet101()
     # if torch.cuda.device_count() > 1:
@@ -106,7 +113,7 @@ if __name__=='__main__':
     best_loss = 100
     for epoch in range(num_epochs):
         start_time = time.time()  # Record start time of epoch
-        for low_res, high_res in dataloader:
+        for low_res, high_res in train_loader:
             low_res, high_res = low_res.to(device), high_res.to(device)
 
             # Forward pass
@@ -136,7 +143,7 @@ if __name__=='__main__':
     model.eval()
     counter = 1
     with torch.no_grad():
-        for low_res, high_res in dataloader:
+        for low_res, high_res in test_loader:
             low_res, high_res = low_res.to(device), high_res.to(device)
             output = model(low_res)
             output = output.view(batch_size, 1, 256, 256)
